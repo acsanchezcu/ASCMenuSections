@@ -35,46 +35,37 @@ class ViewController: UIViewController, ASCMenuSectionDelegate, ASCMenuSectionDa
     }
     
     func menuSection(menuSection: ASCMenuSection, heightForHeaderInSection section: Int) -> CGFloat {
-        return 100.0
+        return 44.0
     }
     
     func menuSection(menuSection: ASCMenuSection, didSelectRowAtIndexPath indexPath: NSIndexPath) {
-        debugPrint("Selected")
+        debugPrint("Header \(indexPath.section) cell \(indexPath.row)")
     }
 
     //MARK: - ASCMenuSectionDatasource
 
     func menuSection(menuSection: ASCMenuSection, viewForHeaderInSection section: Int) -> UIView {
-        let view = UIView.init()
+        let headerView = HeaderView.init()
         
-        view.backgroundColor = UIColor.lightGrayColor()
+        headerView.headerTitle.text = "Header \(section)"
         
-        let label = UILabel.init()
-        
-        label.text = "HEADER \(section)"
-        label.textAlignment = .Center
-        
-        view.addSubview(label)
-        
-        UIView.embedView(label)
-        
-        return view
+        return headerView
     }
     
     func menuSection(menuSection: ASCMenuSection, numberOfRowsInSection section: Int) -> Int {
-        return 3
+        return Int(arc4random_uniform(11) + 1)
     }
     
     func menuSection(menuSection: ASCMenuSection, viewForRowAtIndexPath indexPath: NSIndexPath) -> UIView {
-        let view = UIView.init()
+        let view = CellView.init()
         
-        view.backgroundColor = UIColor.yellowColor()
+        view.cellLabel.text = "CELL section(\(indexPath.section)) row(\(indexPath.row))"
         
         return view
     }
     
     func numberOfSectionsInMenuSection() -> Int {
-        return 10
+        return Int(arc4random_uniform(11) + 2)
     }
 }
 
