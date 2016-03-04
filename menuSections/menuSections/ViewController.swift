@@ -8,13 +8,13 @@
 
 import UIKit
 
-class ViewController: UIViewController, ASCMenuSectionDelegate {
+class ViewController: UIViewController, ASCMenuSectionDelegate, ASCMenuSectionDatasource {
 
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
         
-        let menuSection : ASCMenuSection = ASCMenuSection.init(delegate: self)
+        let menuSection : ASCMenuSection = ASCMenuSection.init(delegate: self, datasource: self)
         
         view.addSubview(menuSection)
         
@@ -30,27 +30,51 @@ class ViewController: UIViewController, ASCMenuSectionDelegate {
     
     //MARK: - ASCMenuSectionDelegate
     
-    func getSections(menuSection: ASCMenuSection) -> Array<UIView> {
-        
-        let aView = UIView.init()
-        
-        aView.backgroundColor = UIColor.yellowColor()
-        
-        let bView = UIView.init()
-        
-        bView.backgroundColor = UIColor.greenColor()
-        
-        let cView = UIView.init()
-        
-        cView.backgroundColor = UIColor.blueColor()
-        
-        let array : Array = [aView, bView, cView]
-        
-        return array
+    func menuSection(menuSection: ASCMenuSection, heightForRowAtIndexPath indexPath: NSIndexPath) -> CGFloat {
+        return 44.0
     }
     
-    func sectionHeight(menuSection: ASCMenuSection) -> Float {
+    func menuSection(menuSection: ASCMenuSection, heightForHeaderInSection section: Int) -> CGFloat {
         return 100.0
+    }
+    
+    func menuSection(menuSection: ASCMenuSection, didSelectRowAtIndexPath indexPath: NSIndexPath) {
+        debugPrint("Selected")
+    }
+
+    //MARK: - ASCMenuSectionDatasource
+
+    func menuSection(menuSection: ASCMenuSection, viewForHeaderInSection section: Int) -> UIView {
+        let view = UIView.init()
+        
+        view.backgroundColor = UIColor.lightGrayColor()
+        
+        let label = UILabel.init()
+        
+        label.text = "HEADER \(section)"
+        label.textAlignment = .Center
+        
+        view.addSubview(label)
+        
+        UIView.embedView(label)
+        
+        return view
+    }
+    
+    func menuSection(menuSection: ASCMenuSection, numberOfRowsInSection section: Int) -> Int {
+        return 3
+    }
+    
+    func menuSection(menuSection: ASCMenuSection, viewForRowAtIndexPath indexPath: NSIndexPath) -> UIView {
+        let view = UIView.init()
+        
+        view.backgroundColor = UIColor.yellowColor()
+        
+        return view
+    }
+    
+    func numberOfSectionsInMenuSection() -> Int {
+        return 10
     }
 }
 

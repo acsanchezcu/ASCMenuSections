@@ -10,10 +10,16 @@ import UIKit
 
 
 protocol ASCMenuSectionDelegate {
-    func getSections (menuSection : ASCMenuSection) -> Array<UIView>
-    func sectionHeight (menuSection : ASCMenuSection) -> Float
-    
-//    func menuSection(menuSection: ASCMenuSection, heightForRowAtIndexPath indexPath: NSIndexPath) -> CGFloat
+    func menuSection(menuSection: ASCMenuSection, heightForRowAtIndexPath indexPath: NSIndexPath) -> CGFloat
+    func menuSection(menuSection: ASCMenuSection, heightForHeaderInSection section: Int) -> CGFloat
+    func menuSection(menuSection: ASCMenuSection, didSelectRowAtIndexPath indexPath: NSIndexPath)
+}
+
+protocol ASCMenuSectionDatasource {
+    func menuSection(menuSection: ASCMenuSection, viewForHeaderInSection section: Int) -> UIView
+    func menuSection(menuSection: ASCMenuSection, numberOfRowsInSection section: Int) -> Int
+    func menuSection(menuSection: ASCMenuSection, viewForRowAtIndexPath indexPath: NSIndexPath) -> UIView
+    func numberOfSectionsInMenuSection() -> Int
 }
 
 
@@ -23,13 +29,8 @@ class ASCMenuSection: UIView {
     
     let scrollView : UIScrollView = UIScrollView.init()
     
-    var sectionHeight : Float {
-        get {
-            return (delegate?.sectionHeight(self))!
-        }
-    }
-    
     var delegate : ASCMenuSectionDelegate?
+    var datasource : ASCMenuSectionDatasource?
     
     var subsectionsContainers : Array<UIView> = []
 
@@ -39,10 +40,11 @@ class ASCMenuSection: UIView {
         self.init(frame:CGRect.zero)
     }
     
-    init (delegate : ASCMenuSectionDelegate) {
+    init (delegate: ASCMenuSectionDelegate, datasource: ASCMenuSectionDatasource) {
         super.init(frame:CGRect.zero)
         
         self.delegate = delegate
+        self.datasource = datasource
     }
     
     required init(coder aDecoder: NSCoder) {
@@ -74,67 +76,8 @@ class ASCMenuSection: UIView {
         addSubview(scrollView)
         
         UIView.embedView(scrollView)
-        
-        if let array = delegate?.getSections(self) {
-            
-            addSectionConstraints(array)
-        }
-    }
-    
-    func addSectionConstraints(array: Array<UIView>) {
-        
-        var views : Dictionary<String, UIView> = [:]
-        
-        var heightVisualFormat = "V:|"
-        
-        var widthConstraints : Array<NSLayoutConstraint> = []
-        
-        for (index, view) in array.enumerate() {
-            
-            addButtonToHeader(view, index: index)
-            
-            let subsectionContainerView = createSubsectionContainer()
-            
-            views["view\(index)"] = view
-            views["subsectionContainerView\(index)"] = subsectionContainerView
-            
-            view.translatesAutoresizingMaskIntoConstraints = false
-            
-            scrollView.addSubview(view)
-            
-            heightVisualFormat += "[view\(index)(height)][subsectionContainerView\(index)]"
-            
-            let widthConstraint = NSLayoutConstraint.constraintsWithVisualFormat("H:|[view(width)]|", options: NSLayoutFormatOptions(rawValue: 0), metrics: ["width": superview!.frame.width], views: ["view": view])
-            
-            widthConstraints += widthConstraint
-        }
-        
-        heightVisualFormat += "|"
-        
-        let heightConstraints = NSLayoutConstraint.constraintsWithVisualFormat(heightVisualFormat, options: NSLayoutFormatOptions(rawValue: 0), metrics: ["height": sectionHeight], views: views)
-        
-        scrollView.addConstraints(widthConstraints)
-        scrollView.addConstraints(heightConstraints)
-    }
 
-    func createSubsectionContainer() -> UIView {
-        let view : UIView = UIView.init()
-        
-        view.translatesAutoresizingMaskIntoConstraints = false
-        
-        view.backgroundColor = UIColor.orangeColor()
-        
-        scrollView.addSubview(view)
-        
-        subsectionsContainers.append(view)
-        
-        let widthConstraints = NSLayoutConstraint.constraintsWithVisualFormat("H:|[view(width)]|", options: NSLayoutFormatOptions(rawValue: 0), metrics: ["width": superview!.frame.width], views: ["view": view])
-        let heightConstraints = NSLayoutConstraint.constraintsWithVisualFormat("V:[view(0)]", options: NSLayoutFormatOptions(rawValue: 0), metrics: nil, views: ["view": view])
-        
-        scrollView.addConstraints(widthConstraints)
-        view.addConstraints(heightConstraints)
-        
-        return view
+        addSectionConstraints()
     }
     
     func addButtonToHeader(view: UIView, index: Int) {
@@ -149,18 +92,140 @@ class ASCMenuSection: UIView {
         button.addTarget(self, action: "userDidTapHeaderButton:", forControlEvents: UIControlEvents.TouchUpInside)
     }
     
+    func addSectionConstraints() {
+        
+        var views : Dictionary<String, UIView> = [:]
+        
+        var heightVisualFormat = "V:|"
+        
+        var widthConstraints : Array<NSLayoutConstraint> = []
+        
+        if let sections = datasource?.numberOfSectionsInMenuSection() {
+            
+            for index in 0...sections {
+                
+                if let view = datasource?.menuSection(self, viewForHeaderInSection: index) {
+                    addButtonToHeader(view, index: index)
+                    
+                    let subsectionContainerView = createSubsectionContainer(index)
+                    
+                    views["view\(index)"] = view
+                    views["subsectionContainerView\(index)"] = subsectionContainerView
+                    
+                    view.translatesAutoresizingMaskIntoConstraints = false
+                    
+                    scrollView.addSubview(view)
+                    
+                    heightVisualFormat += "[view\(index)(height)][subsectionContainerView\(index)]"
+                    
+                    let widthConstraint = NSLayoutConstraint.constraintsWithVisualFormat("H:|[view(width)]|", options: NSLayoutFormatOptions(rawValue: 0), metrics: ["width": superview!.frame.width], views: ["view": view])
+                    
+                    widthConstraints += widthConstraint
+                    
+                    var hMetrics : Dictionary<String, CGFloat> = ["height": 44]
+                    
+                    if let height = delegate?.menuSection(self, heightForHeaderInSection: index) {
+                        hMetrics["height"] = height
+                    }
+                
+                    scrollView.addConstraints(widthConstraints)
+                }
+            }
+            
+            heightVisualFormat += "|"
+            
+            let heightConstraints = NSLayoutConstraint.constraintsWithVisualFormat(heightVisualFormat, options: NSLayoutFormatOptions(rawValue: 0), metrics: ["height": 44], views: views)
+            
+            scrollView.addConstraints(heightConstraints)
+        }
+    }
+
+    func createSubsectionContainer(section: Int) -> UIView {
+
+        let subsectionContainerView = UIView.init()
+        
+        subsectionContainerView.translatesAutoresizingMaskIntoConstraints = false
+        
+        scrollView.addSubview(subsectionContainerView)
+        
+        subsectionsContainers.append(subsectionContainerView)
+        
+        var views : Dictionary<String, UIView> = [:]
+        var metrics : Dictionary<String, CGFloat> = [:]
+        
+        var heightVisualFormat = "V:|"
+        
+        var widthConstraints : Array<NSLayoutConstraint> = []
+        
+        if let rows = datasource?.menuSection(self, numberOfRowsInSection: section) {
+            
+            for row in 0...rows {
+                
+                if let view = datasource?.menuSection(self, viewForRowAtIndexPath: NSIndexPath.init(forRow: row, inSection: section)) {
+//                    addButtonToHeader(view, index: index)
+                    
+                    views["view\(row)"] = view
+                    metrics["height\(row)"] = delegate?.menuSection(self, heightForRowAtIndexPath: NSIndexPath.init(forRow: row, inSection: section))
+                    
+                    view.translatesAutoresizingMaskIntoConstraints = false
+                    
+                    subsectionContainerView.addSubview(view)
+                    
+                    heightVisualFormat += "[view\(row)(height\(row))]"
+                    
+                    let widthConstraint = NSLayoutConstraint.constraintsWithVisualFormat("H:|[view(width)]|", options: NSLayoutFormatOptions(rawValue: 0), metrics: ["width": superview!.frame.width], views: ["view": view])
+                    
+                    widthConstraints += widthConstraint
+                
+                    subsectionContainerView.addConstraints(widthConstraints)
+                }
+            }
+            
+            heightVisualFormat += "|"
+            
+            let verticalConstraints = NSLayoutConstraint.constraintsWithVisualFormat(heightVisualFormat, options: NSLayoutFormatOptions(rawValue: 0), metrics: metrics, views: views)
+            
+            subsectionContainerView.addConstraints(verticalConstraints)
+        }
+        
+        subsectionContainerView.clipsToBounds = true
+        
+        let horizontalConstraints = NSLayoutConstraint.constraintsWithVisualFormat("H:|[subsectionContainerView]|", options: NSLayoutFormatOptions(rawValue: 0), metrics: nil, views: ["subsectionContainerView": subsectionContainerView])
+        let verticalConstraints = NSLayoutConstraint.constraintsWithVisualFormat("V:[subsectionContainerView(0)]", options: NSLayoutFormatOptions(rawValue: 0), metrics: nil, views: ["subsectionContainerView": subsectionContainerView])
+        
+        scrollView.addConstraints(horizontalConstraints)
+        
+        subsectionContainerView.addConstraints(verticalConstraints)
+        
+        return subsectionContainerView
+    }
+    
     func userDidTapHeaderButton(sender:UIButton!)
     {
-        let index = sender.tag
+        let section = sender.tag
         
-        let view : UIView = subsectionsContainers[index]
+        let view : UIView = subsectionsContainers[section]
+        
+        var totalHeight : CGFloat = 0.0
+        
+        if let rows = datasource?.menuSection(self, numberOfRowsInSection: section) {
+            for row in 0...rows {
+                
+                if let height = delegate?.menuSection(self, heightForRowAtIndexPath: NSIndexPath.init(forRow: row, inSection: section)) {
+                    totalHeight += height
+                }
+            }
+        }
         
         for constraint in view.constraints {
-            constraint.constant = (constraint.constant == 0.0) ? 60.0 : 0.0
             
-            UIView.animateWithDuration(0.3, animations: { () -> Void in
-                self.layoutIfNeeded()
-            })
+            if constraint.firstItem === view && constraint.firstAttribute == .Height {
+                constraint.constant = (constraint.constant == 0.0) ? totalHeight : 0.0
+                
+                UIView.animateWithDuration(0.3, animations: { () -> Void in
+                    self.layoutIfNeeded()
+                })
+            }
         }
     }
 }
